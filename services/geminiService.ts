@@ -7,7 +7,10 @@ export const getMaintenanceAdvice = async (
   userQuery: string
 ): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // For local Vite development, we use import.meta.env
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_API_KEY;
+    const ai = new GoogleGenAI({ apiKey: apiKey });
     
     // Construct context about the current system state
     const systemContext = parts.map(p => {

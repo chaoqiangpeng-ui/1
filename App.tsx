@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Part, PartHealth, PartStatus, ChatMessage } from './types';
 import { PartCard } from './components/PartCard';
@@ -27,8 +26,22 @@ const INITIAL_PARTS: Part[] = [
   { id: '5', machineId: 'M-03', name: 'Cabin Filter', category: 'HVAC', installDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 400).toISOString(), lifespanDays: 365 }, 
 ];
 
+const STORAGE_KEY = 'partlife_manager_data';
+
 const App: React.FC = () => {
-  const [parts, setParts] = useState<Part[]>(INITIAL_PARTS);
+  // Initialize state from LocalStorage if available, otherwise use seed data
+  const [parts, setParts] = useState<Part[]>(() => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        return JSON.parse(savedData);
+      }
+    } catch (error) {
+      console.error("Failed to load data from storage", error);
+    }
+    return INITIAL_PARTS;
+  });
+
   const [isAdvisorOpen, setIsAdvisorOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -44,7 +57,13 @@ const App: React.FC = () => {
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
 
   // State for replacement confirmation
-  const [partToReplace, setPartToReplace] = useState<string | null>(null);
+  const [partToReplace, setPartToReplace] = useState<string>('all');
+
+  // --- Persistence Effect ---
+  // Save to LocalStorage whenever 'parts' changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(parts));
+  }, [parts]);
 
   // --- Logic ---
 
@@ -99,7 +118,7 @@ const App: React.FC = () => {
   };
 
   const handleConfirmReplace = () => {
-    if (!partToReplace) return;
+    if (!partToReplace || partToReplace === 'all') return;
 
     setParts(prevParts => prevParts.map(part => {
       if (part.id === partToReplace) {
@@ -107,7 +126,7 @@ const App: React.FC = () => {
       }
       return part;
     }));
-    setPartToReplace(null);
+    setPartToReplace('all');
   };
 
   const openCreateModal = () => {
@@ -388,8 +407,8 @@ const App: React.FC = () => {
 
       {/* Replacement Confirmation Modal */}
       <ConfirmModal 
-        isOpen={!!partToReplace}
-        onClose={() => setPartToReplace(null)}
+        isOpen={partToReplace !== 'all'}
+        onClose={() => setPartToReplace('all')}
         onConfirm={handleConfirmReplace}
         title="Confirm Replacement"
         message="Are you sure you want to replace this part? This will reset the installation date to today and 0% wear."
